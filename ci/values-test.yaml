@@ -1,0 +1,27 @@
+name: 'gitlab-atolpay'
+
+replicaCount: 1
+contour: nosec
+
+# Обязательная секция
+image:
+  repository: harbor-croc-test.atolpay.ru/atolpay/nodejs/gitlab-atolpay
+  pullPolicy: IfNotPresent
+
+# Обязательная секция
+resources:
+  # Минимально необходимые ресурсы
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  # Максимум допустимых ресурсов
+  limits:
+    cpu: 400m
+    memory: 512Mi
+
+ingress:
+  enabled: true
+  hosts:
+    - host: kz-1-api.atolpay.ru
+      paths:
+        - path: /gitlab/jobs/

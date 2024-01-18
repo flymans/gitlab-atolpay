@@ -1,0 +1,15 @@
+variables:
+  APP_NAME: gitlab-atolpay
+  APP_GROUP: nodejs
+  TEST_NAME: test-kz1-nosec
+  VAULT_CONFIGS: default.json
+
+stages:
+  - build
+  - deploy
+
+include:
+  - project: 'atolpay/devops/gitlab-ci'
+    file: 'kaniko-build-test.yml'
+  - project: 'atolpay/devops/gitlab-ci'
+    file: 'helm-deploy-test.yml'
