@@ -2,7 +2,7 @@ variables:
   APP_NAME: gitlab-atolpay
   APP_GROUP: nodejs
   TEST_NAME: test-kz1-nosec
-  VAULT_CONFIGS: default.json
+  VAULT_ENV: "True"
 
 stages:
   - build

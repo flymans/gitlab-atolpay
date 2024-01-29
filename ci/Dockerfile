@@ -1,7 +1,7 @@
 FROM harbor-croc-test.atolpay.ru/dockerhub-proxy/library/node:20-alpine AS builder
 
 WORKDIR /app
-COPY ./package.json ./yarn.lock ./
+COPY ./package.json ./yarn.lock ./.npmrc ./
 
 RUN yarn install
 
