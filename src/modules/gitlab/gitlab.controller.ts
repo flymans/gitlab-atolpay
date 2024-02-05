@@ -17,6 +17,11 @@ export class GitlabController {
     return this.gitlabService.jobNotify(body);
   }
 
+  @Post('jobs/notify/autotest')
+  async autotestStepNotify(@Body() body) {
+    return this.gitlabService.autotestStepNotify(body);
+  }
+
   @Get('/behind-master')
   async getBehindMaster(@Query('from') from, @Query('to') to) {
     return this.gitlabService.behindMaster(from, to);

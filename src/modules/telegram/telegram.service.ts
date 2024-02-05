@@ -34,6 +34,16 @@ export class TelegramService {
       }, 5000); // 5 sec
     }
   }
+
+  public async sendAutotestMessageToChat({ name, link }: { name: string; link: string }): Promise<void> {
+    const autotestChat = this.configService.get<number>('TELEGRAM_AUTOTESTS_CHAT_ID');
+    const encodedLink = atob(link);
+    const message = `
+✅Автотесты для сервиса <b>${name}</b> завершились\n
+<b>📝Отчет:</b> ${encodedLink}
+`;
+    await this.telegramRepository.sendMessage(autotestChat, message);
+  }
   // private async saveChatId(chatId: number) {
   //   await appendFile('subscribers.txt', `${chatId}\n`);
   // }

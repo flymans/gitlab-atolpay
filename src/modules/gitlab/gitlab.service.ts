@@ -121,8 +121,13 @@ export class GitlabService {
     return allProjectBranches;
   }
 
-  async jobNotify(values) {
+  async jobNotify(values): Promise<string> {
     await this.telegramService.sendBuildMessageToChat(values);
+    return 'Сообщение отправлено в телеграм';
+  }
+
+  async autotestStepNotify(values): Promise<string> {
+    await this.telegramService.sendAutotestMessageToChat(values);
     return 'Сообщение отправлено в телеграм';
   }
 }
