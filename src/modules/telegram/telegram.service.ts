@@ -28,7 +28,7 @@ export class TelegramService {
     const key = `${name}-${branch}`;
     const message = `
 Сборка сервиса <b>${name}</b> на ветке <i>${branch}</i> <b>${status === 'start' ? 'стартовала⌛' : 'завершилась✅'}</b>
-${link && `<b>Ссылка: ${atob(link)}</b>`}
+${link ? `<b>Ссылка: ${atob(link)}</b>` : ''}
     `;
 
     if (status === 'start') {
@@ -41,10 +41,7 @@ ${link && `<b>Ссылка: ${atob(link)}</b>`}
         this.buildMessages.delete(key);
       }
 
-      const messageId = await this.telegramRepository.sendMessage(buildStatusChat, message);
-      setTimeout(async () => {
-        await this.telegramRepository.removeMessage(buildStatusChat, messageId);
-      }, 5000); // 5 sec
+      await this.telegramRepository.sendMessage(buildStatusChat, message);
     }
   }
 
