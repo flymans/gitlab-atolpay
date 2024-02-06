@@ -13,10 +13,23 @@ export class TelegramService {
   ) {}
   private buildMessages = new Map<string, number>();
 
-  public async sendBuildMessageToChat({ name, branch, status }: { name: string; branch: string; status: string }): Promise<void> {
+  public async sendBuildMessageToChat({
+    name,
+    branch,
+    status,
+    link,
+  }: {
+    name: string;
+    branch: string;
+    status: string;
+    link?: string;
+  }): Promise<void> {
     const buildStatusChat = this.configService.get<number>('TELEGRAM_BUILD_STATUS_CHAT_ID');
     const key = `${name}-${branch}`;
-    const message = `Сборка сервиса <b>${name}</b> на ветке <i>${branch}</i> <b>${status === 'start' ? 'стартовала⌛' : 'завершилась✅'}</b>`;
+    const message = `
+Сборка сервиса <b>${name}</b> на ветке <i>${branch}</i> <b>${status === 'start' ? 'стартовала⌛' : 'завершилась✅'}</b>
+${link && `<b>Ссылка: ${atob(link)}</b>`}
+    `;
 
     if (status === 'start') {
       const messageId = await this.telegramRepository.sendMessage(buildStatusChat, message);
