@@ -27,7 +27,7 @@ export class TelegramService {
     const buildStatusChat = this.configService.get<number>('TELEGRAM_BUILD_STATUS_CHAT_ID');
     const key = `${name}-${branch}`;
     const message = `
-Сборка сервиса <b>${name}</b> на ветке <i>${branch}</i> <b>${status === 'start' ? 'стартовала⌛' : 'завершилась✅'}</b>
+Сборка сервиса <b>${name}</b> на ветке <i>${branch}</i> <b>${status === 'start' ? 'стартовала ⌛' : 'завершилась ✅'}</b>
 ${link ? `<b>Ссылка: ${atob(link)}</b>` : ''}
     `;
 
@@ -49,8 +49,8 @@ ${link ? `<b>Ссылка: ${atob(link)}</b>` : ''}
     const autotestChat = this.configService.get<number>('TELEGRAM_AUTOTESTS_CHAT_ID');
     const encodedLink = atob(link);
     const message = `
-✅Автотесты для сервиса <b>${name}</b> завершились\n
-<b>📝Отчет:</b> ${encodedLink}
+✅ Автотесты для сервиса <b>${name}</b> завершились\n
+<b>📝 Отчет:</b> ${encodedLink}
 `;
     await this.telegramRepository.sendMessage(autotestChat, message);
   }
