@@ -15,4 +15,7 @@ export class TelegramRepository extends Telegraf<Context> {
   async removeMessage(chatId: number, messageId: number): Promise<void> {
     await this.telegram.deleteMessage(chatId, messageId);
   }
+  async editMessage(chatId: number, messageId: number, message: string): Promise<void> {
+    await this.telegram.editMessageText(chatId, messageId, null, message);
+  }
 }

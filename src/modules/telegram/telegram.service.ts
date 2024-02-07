@@ -10,8 +10,28 @@ export class TelegramService {
   constructor(
     private readonly telegramRepository: TelegramRepository,
     private readonly configService: ConfigService,
-  ) {}
-  private buildMessages = new Map<string, number>();
+  ) {
+    setInterval(
+      () => {
+        this.cleanupBuildMessages();
+      },
+      10 * 60 * 1000,
+    ); //every 10 minute
+  }
+  private buildMessages = new Map<string, { messageId: number; timestamp: number }>();
+  private buildStatusChat = this.configService.get<number>('TELEGRAM_BUILD_STATUS_CHAT_ID');
+
+  async cleanupBuildMessages() {
+    const expirationTime = 15 * 60 * 1000; // 15 minutes
+    const now = Date.now();
+
+    for (const [key, { messageId, timestamp }] of this.buildMessages.entries()) {
+      if (now - timestamp < expirationTime) return;
+      const expiredMessage = `Что-то пошло не так со сборкой: ${key} ❌`;
+      await this.telegramRepository.editMessage(this.buildStatusChat, messageId, expiredMessage);
+      this.buildMessages.delete(key);
+    }
+  }
 
   public async sendBuildMessageToChat({
     name,
@@ -24,24 +44,23 @@ export class TelegramService {
     status: string;
     link?: string;
   }): Promise<void> {
-    const buildStatusChat = this.configService.get<number>('TELEGRAM_BUILD_STATUS_CHAT_ID');
     const key = `${name}-${branch}`;
     const message = `
 Сборка сервиса <b>${name}</b> на ветке <i>${branch}</i> <b>${status === 'start' ? 'стартовала ⌛' : 'завершилась ✅'}</b>
 ${link ? `<b>Ссылка: ${atob(link)}</b>` : ''}
     `;
 
-    if (status === 'start') {
-      const messageId = await this.telegramRepository.sendMessage(buildStatusChat, message);
-      this.buildMessages.set(key, messageId);
-    } else {
-      const startMessageId = this.buildMessages.get(key);
-      if (startMessageId) {
-        await this.telegramRepository.removeMessage(buildStatusChat, startMessageId);
-        this.buildMessages.delete(key);
-      }
+    const { messageId: startMessageId } = this.buildMessages.get(key) || {};
+    if (startMessageId) {
+      await this.telegramRepository.removeMessage(this.buildStatusChat, startMessageId);
+      this.buildMessages.delete(key);
+    }
 
-      await this.telegramRepository.sendMessage(buildStatusChat, message);
+    if (status === 'start') {
+      const messageId = await this.telegramRepository.sendMessage(this.buildStatusChat, message);
+      this.buildMessages.set(key, { messageId, timestamp: Date.now() });
+    } else {
+      await this.telegramRepository.sendMessage(this.buildStatusChat, message);
     }
   }
 
@@ -54,6 +73,7 @@ ${link ? `<b>Ссылка: ${atob(link)}</b>` : ''}
 `;
     await this.telegramRepository.sendMessage(autotestChat, message);
   }
+
   // private async saveChatId(chatId: number) {
   //   await appendFile('subscribers.txt', `${chatId}\n`);
   // }
