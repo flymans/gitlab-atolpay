@@ -27,7 +27,7 @@ export class TelegramService {
 
     for (const [key, { messageId, timestamp }] of this.buildMessages.entries()) {
       if (now - timestamp < expirationTime) return;
-      const expiredMessage = `Что-то пошло не так со сборкой: ${key} ❌`;
+      const expiredMessage = `❌ Со сборкой ${key} Что-то пошло не так`;
       await this.telegramRepository.editMessage(this.buildStatusChat, messageId, expiredMessage);
       this.buildMessages.delete(key);
     }
@@ -45,8 +45,9 @@ export class TelegramService {
     link?: string;
   }): Promise<void> {
     const key = `${name}-${branch}`;
+    const isStarted = status === 'start';
     const message = `
-Сборка сервиса <b>${name}</b> на ветке <i>${branch}</i> <b>${status === 'start' ? 'стартовала ⌛' : 'завершилась ✅'}</b>
+${isStarted ? '⌛ ' : '✅ '}Сборка <b>${name}</b> на ветке <i>${branch}</i> <b>${isStarted ? 'стартовала' : 'завершилась'}</b>
 ${link ? `<b>Ссылка: ${atob(link)}</b>` : ''}
     `;
 
