@@ -27,7 +27,8 @@ export class TelegramService {
 
     for (const [key, { messageId, timestamp }] of this.buildMessages.entries()) {
       if (now - timestamp < expirationTime) return;
-      const expiredMessage = `❌ Со сборкой ${key} Что-то пошло не так`;
+      const [, name, branch] = key.match(/^([^-]+)-(.+)$/);
+      const expiredMessage = `❌ Со сборкой <b>${name}</b> на ветке <i>${branch}</i> что-то пошло не так`;
       await this.telegramRepository.editMessage(this.buildStatusChat, messageId, expiredMessage);
       this.buildMessages.delete(key);
     }
