@@ -17,12 +17,19 @@ export class LoggingService {
   };
 
   private getResponse = (response) => {
-    try {
-      return JSON.parse(response.data);
-    } catch (error) {
-      return response || 'OK';
-    }
+    return {
+      status: response.status,
+      statusText: response.statusText,
+    };
   };
+
+  private getError(error) {
+    return {
+      message: error.message,
+      name: error.name,
+      stack: error.stack,
+    };
+  }
 
   private readonly logger = new Logger(LoggingService.name);
 
@@ -33,7 +40,8 @@ export class LoggingService {
   logResponse(response) {
     this.logger.log(`Response: ${JSON.stringify(this.getResponse(response))}`);
   }
+
   logError(details) {
-    this.logger.error(`Error: ${JSON.stringify(this.getResponse(details))}`);
+    this.logger.error(`Error: ${JSON.stringify(this.getError(details))}`);
   }
 }

@@ -1,21 +1,14 @@
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 
 import { ConfigModule } from '@nestjs/config';
-import { HttpModule } from '@nestjs/axios';
-import { MiddlewareLogger } from './middlewares/middleware.logger';
-import { LoggingService } from './services/logging.service';
-import { HttpConfigService } from './services/http-config.service';
+
 import { TelegramModule } from './modules/telegram/telegram.module';
 import { GitlabController } from './modules/gitlab/gitlab.controller';
-import { GitlabService } from './modules/gitlab/gitlab.service';
+import { CustomHttpModule } from './modules/http/http.module';
+import { GitlabModule } from './modules/gitlab/gitlab.module';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), HttpModule, TelegramModule],
+  imports: [ConfigModule.forRoot({ isGlobal: true }), CustomHttpModule, TelegramModule, GitlabModule],
   controllers: [GitlabController],
-  providers: [GitlabService, LoggingService, HttpConfigService],
 })
-export class AppModule implements NestModule {
-  configure(consumer: MiddlewareConsumer) {
-    consumer.apply(MiddlewareLogger).forRoutes('*');
-  }
-}
+export class AppModule {}

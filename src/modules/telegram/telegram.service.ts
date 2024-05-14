@@ -1,7 +1,10 @@
-import { Command, Ctx, Start, Update } from 'nestjs-telegraf';
-import { Scenes } from 'telegraf';
+import { Action, Command, Ctx, Hears, On, Start, Update } from 'nestjs-telegraf';
+import { Markup, Scenes } from 'telegraf';
 import { TelegramRepository } from './telegram.repository';
 import { ConfigService } from '@nestjs/config';
+import { Inject, forwardRef } from '@nestjs/common';
+import { GitlabService } from '../gitlab/gitlab.service';
+import { prepareTable } from './utils';
 
 type Context = Scenes.SceneContext;
 
@@ -10,6 +13,8 @@ export class TelegramService {
   constructor(
     private readonly telegramRepository: TelegramRepository,
     private readonly configService: ConfigService,
+    @Inject(forwardRef(() => GitlabService))
+    private readonly gitlabService: GitlabService,
   ) {
     setInterval(
       () => {
@@ -76,61 +81,66 @@ ${link ? `<b>Ссылка: ${atob(link)}</b>` : ''}
     await this.telegramRepository.sendMessage(autotestChat, message);
   }
 
-  // private async saveChatId(chatId: number) {
-  //   await appendFile('subscribers.txt', `${chatId}\n`);
-  // }
-
-  // private async removeChatId(chatId: number) {
-  //   const data = await readFile('subscribers.txt', 'utf8');
-  //   const chatIds = data.split('\n');
-  //   const filteredChatIds = chatIds.filter((id) => id !== chatId.toString());
-  //   await writeFile('subscribers.txt', filteredChatIds.join('\n'));
-  // }
-
-  // private async isChatIdSubscribed(chatId: number): Promise<boolean> {
-  //   const data = await readFile('subscribers.txt', 'utf8');
-  //   return data.split('\n').includes(chatId.toString());
-  // }
-
-  @Start()
-  async onStart(@Ctx() ctx: Context): Promise<void> {
-    // const chatId = ctx.chat.id;
-    // const isSubscriber = await this.isChatIdSubscribed(chatId);
+  private async showMainMenu(ctx: Context, message: string): Promise<void> {
     ctx.replyWithHTML(
-      `Привет, <b>${ctx.from.username}</b>
-Это тестовый бот для получения оповещений о старте/окончании gitlab build'a
-    `,
-      // Markup.inlineKeyboard([Markup.button.callback(isSubscriber ? 'Отписаться' : 'Подписаться', isSubscriber ? 'unsubscribe' : 'subscribe')]),
+      message,
+      Markup.keyboard([['🔍 Узнать id чата'], ['🌿 Проверить отставание веток от master']])
+        .oneTime()
+        .resize(),
     );
   }
 
-  //   @Action('subscribe')
-  //   async onSubscribe(@Ctx() ctx: Context): Promise<void> {
-  //     const chatId = ctx.chat.id;
-  //     const isSubscriber = await this.isChatIdSubscribed(chatId);
-  //     if (isSubscriber) ctx.answerCbQuery('Вы уже подписаны!');
-  //     else {
-  //       await this.saveChatId(chatId);
-  //       await ctx.answerCbQuery('Вы подписались!');
-  //       await ctx.reply(`Вы успешно подписались!
-  // Теперь при старте/окончании сборки сервиса atolpay, Вам будут приходить оповещения`);
-  //     }
-  //   }
+  @Start()
+  async onStart(@Ctx() ctx: Context): Promise<void> {
+    const message = `Привет, <b>${ctx.from.username}</b>
+Это тестовый бот для получения оповещений о старте/окончании gitlab build'a
+    `;
+    this.showMainMenu(ctx, message);
+  }
 
-  // @Action('unsubscribe')
-  // async onUnsubscribe(@Ctx() ctx: Context): Promise<void> {
-  //   const chatId = ctx.chat.id;
-  //   const isSubscriber = await this.isChatIdSubscribed(chatId);
-  //   if (!isSubscriber) ctx.answerCbQuery('Вы уже отписаны!');
-  //   else {
-  //     await this.removeChatId(chatId);
-  //     await ctx.answerCbQuery('Вы отписались!');
-  //     await this.onStart(ctx);
-  //   }
-  // }
-
+  @Hears('🔍 Узнать id чата')
   @Command('getChatId')
-  async getChatId(@Ctx() ctx: Context): Promise<number> {
+  async getChatIdCommand(@Ctx() ctx: Context): Promise<number> {
     return ctx.chat.id;
+  }
+
+  @Hears('🌿 Проверить отставание веток от master')
+  async behindMaster(@Ctx() ctx: Context): Promise<void> {
+    const branches = ['develop/gryffindor', 'develop/hufflepuff', 'develop/slytherin'];
+    const inlineKeyboard = Markup.inlineKeyboard(branches.map((branch) => Markup.button.callback(branch, branch)));
+    await ctx.replyWithHTML('Выберите рассматриваемую ветку:', inlineKeyboard);
+  }
+
+  @Action(/develop(.+)/)
+  async onBranchSelection(@Ctx() ctx): Promise<void> {
+    const selectedBranch = ctx.match[0];
+    await ctx.replyWithHTML(`
+    Выбранная ветка: <b>${selectedBranch}</b>. Пожалуйста, отправьте GitLab токен для запроса.\n
+P.S. Токен нигде не сохраняется. При успешном получении, я удалю его из истории чата
+    `);
+    ctx.session.branch = selectedBranch;
+    ctx.session.awaitingToken = true;
+  }
+
+  @On('text')
+  async listenToGitlabToken(@Ctx() ctx): Promise<void> {
+    if (ctx.session.awaitingToken) {
+      const token = ctx.message.text;
+      await this.telegramRepository.removeMessage(ctx.message.chat.id, ctx.message.message_id);
+
+      ctx.session.awaitingToken = false;
+
+      await ctx.reply('Токен получен, выполняю запрос...');
+      try {
+        await this.gitlabService.setToken(token);
+
+        const res = await this.gitlabService.behindMaster(ctx.session.branch, 'master');
+        await ctx.replyWithHTML(prepareTable(res));
+      } catch (error) {
+        await ctx.reply('Некорректный токен');
+      } finally {
+        this.showMainMenu(ctx, 'Возвращение в главное меню: ');
+      }
+    }
   }
 }
