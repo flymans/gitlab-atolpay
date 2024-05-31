@@ -4,7 +4,8 @@ import { TelegramRepository } from './telegram.repository';
 import { ConfigService } from '@nestjs/config';
 import { Inject, forwardRef } from '@nestjs/common';
 import { GitlabService } from '../gitlab/gitlab.service';
-import { prepareTable } from './utils';
+import { prepareBuildMessage, prepareTable } from './utils';
+import { BuildMessageArgsDto } from './dto/internal/build-message';
 
 type Context = Scenes.SceneContext;
 
@@ -32,30 +33,18 @@ export class TelegramService {
 
     for (const [key, { messageId, timestamp }] of this.buildMessages.entries()) {
       if (now - timestamp < expirationTime) return;
-      const [, name, branch] = key.match(/^([^-]+)-(.+)$/);
+      const [, name, branch] = key.match(/^\[(.+)\]\[(.+)\]$/);
       const expiredMessage = `❌ Со сборкой <b>${name}</b> на ветке <i>${branch}</i> что-то пошло не так`;
       await this.telegramRepository.editMessage(this.buildStatusChat, messageId, expiredMessage);
       this.buildMessages.delete(key);
     }
   }
 
-  public async sendBuildMessageToChat({
-    name,
-    branch,
-    status,
-    link,
-  }: {
-    name: string;
-    branch: string;
-    status: string;
-    link?: string;
-  }): Promise<void> {
-    const key = `${name}-${branch}`;
+  public async sendBuildMessageToChat({ name, branch, status, link, stage, tag }: BuildMessageArgsDto): Promise<void> {
+    const buildIdentifier = tag || branch;
+    const key = `[${name}][${buildIdentifier}]`;
     const isStarted = status === 'start';
-    const message = `
-${isStarted ? '⌛ ' : '✅ '}Сборка <b>${name}</b> на ветке <i>${branch}</i> <b>${isStarted ? 'стартовала' : 'завершилась'}</b>
-${link ? `<b>Ссылка: ${atob(link)}</b>` : ''}
-    `;
+    const message = prepareBuildMessage({ isStarted, buildIdentifier, link, name, stage });
 
     const { messageId: startMessageId } = this.buildMessages.get(key) || {};
     if (startMessageId) {
