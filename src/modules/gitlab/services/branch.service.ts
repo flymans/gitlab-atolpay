@@ -27,7 +27,7 @@ export class BranchService {
     };
   }
 
-  private async compareBranches({ projectId, from, to }: { projectId: number; from: string; to: string }) {
+  private async getDiffs({ projectId, from, to }: { projectId: number; from: string; to: string }) {
     const { data: comparison } = await lastValueFrom(
       this.httpService.request(
         this.tokenService.getConfig({
@@ -58,14 +58,14 @@ export class BranchService {
     return response.data.map(({ id, name }) => ({ id, name }));
   }
 
-  async behindMaster(from: string = 'develop/slytherin', to: string = 'master') {
+  async compareBranches(from: string = 'develop/slytherin', to: string = 'master') {
     const projects = (await Promise.all(Object.values(GROUP_LIST).map((groupId) => this.fetchProjects(groupId)))).flat();
 
     const allProjectBranches = await projects.reduce(async (accumulatorPromise, project) => {
       const accumulator = await accumulatorPromise;
       const projectBranchData = await this.fetchBranches(project);
       if ([from, to].every((value) => projectBranchData.branches.includes(value))) {
-        const comparison = await this.compareBranches({ projectId: project.id, from, to });
+        const comparison = await this.getDiffs({ projectId: project.id, from, to });
         if (comparison) {
           accumulator.push({ project: projectBranchData.project.name, configChanges: comparison });
         }

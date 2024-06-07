@@ -4,6 +4,7 @@ interface BuildMessageInterface {
   link?: string;
   name: string;
   stage?: string;
+  buildTime?: string;
 }
 
 const tryDecodeBase64 = (str: string): string => {
@@ -14,9 +15,10 @@ const tryDecodeBase64 = (str: string): string => {
   }
 };
 
-export const prepareBuildMessage = ({ isStarted, buildIdentifier, link, name, stage }: BuildMessageInterface) => {
+export const prepareBuildMessage = ({ isStarted, buildIdentifier, link, name, stage, buildTime }: BuildMessageInterface) => {
   const project = `${name}${stage ? `:${stage}` : ''}`;
   return `${isStarted ? '⌛ ' : '✅ '}Сборка <b>${project}</b> на ветке <i>${buildIdentifier}</i> <b>${isStarted ? 'стартовала' : 'завершилась'}</b>
   ${link ? `<b>Ссылка: ${tryDecodeBase64(link)}</b>` : ''}
+  ${buildTime ? `<b>Время сборки</b>: ${buildTime}` : ''}
       `;
 };

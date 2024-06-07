@@ -13,8 +13,8 @@ export class GitlabService {
     private readonly tokenService: TokenService,
   ) {}
 
-  async behindMaster(from: string = 'develop/slytherin', to: string = 'master') {
-    return this.branchService.behindMaster(from, to);
+  async compareBranches(from: string = 'develop/slytherin', to: string = 'master') {
+    return this.branchService.compareBranches(from, to);
   }
 
   async getJobsTime(project) {

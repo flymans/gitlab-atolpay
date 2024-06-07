@@ -4,7 +4,7 @@ import { TelegramRepository } from './telegram.repository';
 import { ConfigService } from '@nestjs/config';
 import { Inject, forwardRef } from '@nestjs/common';
 import { GitlabService } from '../gitlab/gitlab.service';
-import { prepareBuildMessage, prepareTable } from './utils';
+import { getBuildTimeMessage, prepareBuildMessage, prepareTable } from './utils';
 import { BuildMessageArgsDto } from './dto/internal/build-message';
 
 type Context = Scenes.SceneContext;
@@ -44,9 +44,10 @@ export class TelegramService {
     const buildIdentifier = tag || branch;
     const key = `[${name}][${buildIdentifier}]`;
     const isStarted = status === 'start';
-    const message = prepareBuildMessage({ isStarted, buildIdentifier, link, name, stage });
+    const { messageId: startMessageId, timestamp: startTimestamp } = this.buildMessages.get(key) || {};
+    const buildTime = startTimestamp && !isStarted && getBuildTimeMessage(startTimestamp);
+    const message = prepareBuildMessage({ isStarted, buildIdentifier, link, name, stage, buildTime });
 
-    const { messageId: startMessageId } = this.buildMessages.get(key) || {};
     if (startMessageId) {
       await this.telegramRepository.removeMessage(this.buildStatusChat, startMessageId);
       this.buildMessages.delete(key);
@@ -123,7 +124,7 @@ P.S. Токен нигде не сохраняется. При успешном 
       try {
         await this.gitlabService.setToken(token);
 
-        const res = await this.gitlabService.behindMaster(ctx.session.branch, 'master');
+        const res = await this.gitlabService.compareBranches(ctx.session.branch, 'master');
         await ctx.replyWithHTML(prepareTable(res));
       } catch (error) {
         await ctx.reply('Некорректный токен');

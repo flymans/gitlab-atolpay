@@ -22,8 +22,8 @@ export class GitlabController {
     return this.gitlabService.autotestStepNotify(body);
   }
 
-  @Get('/behind-master')
-  async getBehindMaster(@Query('from') from, @Query('to') to) {
-    return this.gitlabService.behindMaster(from, to);
+  @Get('/compare-branches')
+  async compareBranches(@Query('from') from, @Query('to') to) {
+    return this.gitlabService.compareBranches(from, to);
   }
 }
