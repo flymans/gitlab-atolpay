@@ -27,6 +27,23 @@ export class TelegramService {
   private buildMessages = new Map<string, { messageId: number; timestamp: number }>();
   private buildStatusChat = this.configService.get<number>('TELEGRAM_BUILD_STATUS_CHAT_ID');
 
+  private compareBranchesRequest = async (token: string, ctx): Promise<void> => {
+    await ctx.reply('Токен получен, выполняю запрос...');
+    await this.gitlabService.setToken(token);
+
+    const res = await this.gitlabService.compareBranches(ctx.session.branch, 'master');
+    await ctx.replyWithHTML(prepareTable(res));
+  };
+
+  private requestToken = async (selectedBranch: string, ctx): Promise<void> => {
+    await ctx.replyWithHTML(`
+      Пожалуйста, отправьте свой GitLab токен для запроса.\n
+  P.S. Токен нигде не сохраняется. При успешном получении, я удалю его из истории чата
+      `);
+    ctx.session.branch = selectedBranch;
+    ctx.session.awaitingToken = true;
+  };
+
   async cleanupBuildMessages() {
     const expirationTime = 15 * 60 * 1000; // 15 minutes
     const now = Date.now();
@@ -104,12 +121,19 @@ export class TelegramService {
   @Action(/develop(.+)/)
   async onBranchSelection(@Ctx() ctx): Promise<void> {
     const selectedBranch = ctx.match[0];
-    await ctx.replyWithHTML(`
-    Выбранная ветка: <b>${selectedBranch}</b>. Пожалуйста, отправьте GitLab токен для запроса.\n
-P.S. Токен нигде не сохраняется. При успешном получении, я удалю его из истории чата
-    `);
-    ctx.session.branch = selectedBranch;
-    ctx.session.awaitingToken = true;
+    await ctx.replyWithHTML(`Выбранная ветка: <b>${selectedBranch}</b>.`);
+    const token = this.configService.get<string>('PRIVATE_GITLAB_TOKEN');
+    if (token) {
+      await ctx.replyWithHTML(`Токен найден в конфиге`);
+      try {
+        await this.compareBranchesRequest(token, ctx);
+      } catch (error) {
+        await ctx.replyWithHTML(`Найденный токен не работает`);
+        await this.requestToken(selectedBranch, ctx);
+      }
+    } else {
+      await this.requestToken(selectedBranch, ctx);
+    }
   }
 
   @On('text')
@@ -117,19 +141,13 @@ P.S. Токен нигде не сохраняется. При успешном 
     if (ctx.session.awaitingToken) {
       const token = ctx.message.text;
       await this.telegramRepository.removeMessage(ctx.message.chat.id, ctx.message.message_id);
-
       ctx.session.awaitingToken = false;
-
-      await ctx.reply('Токен получен, выполняю запрос...');
       try {
-        await this.gitlabService.setToken(token);
-
-        const res = await this.gitlabService.compareBranches(ctx.session.branch, 'master');
-        await ctx.replyWithHTML(prepareTable(res));
+        await this.compareBranchesRequest(token, ctx);
       } catch (error) {
         await ctx.reply('Некорректный токен');
       } finally {
-        this.showMainMenu(ctx, 'Возвращение в главное меню: ');
+        this.showMainMenu(ctx, 'Возвращение в главное меню:');
       }
     }
   }
