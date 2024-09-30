@@ -40,7 +40,7 @@ export class TelegramService {
       Пожалуйста, отправьте свой GitLab токен для запроса.\n
   P.S. Токен нигде не сохраняется. При успешном получении, я удалю его из истории чата
       `);
-    ctx.session.branch = selectedBranch;
+
     ctx.session.awaitingToken = true;
   };
 
@@ -121,6 +121,7 @@ export class TelegramService {
   @Action(/develop(.+)/)
   async onBranchSelection(@Ctx() ctx): Promise<void> {
     const selectedBranch = ctx.match[0];
+    ctx.session.branch = selectedBranch;
     await ctx.replyWithHTML(`Выбранная ветка: <b>${selectedBranch}</b>.`);
     const token = this.configService.get<string>('PRIVATE_GITLAB_TOKEN');
     if (token) {
